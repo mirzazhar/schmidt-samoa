@@ -63,3 +63,35 @@ type PrivateKey struct {
 type PublicKey struct {
 	N *big.Int // modulus N
 }
+
+// Encrypt encrypts a plain text represented as a byte array. It returns
+// an error if plain text value is larger than modulus N of Public key.
+func (pub *PublicKey) Encrypt(plainText []byte) ([]byte, error) {
+	m := new(big.Int).SetBytes(plainText)
+	if m.Cmp(pub.N) == 1 { //  m < N
+		return nil, ErrLargeMessage
+	}
+
+	// c=m^N mod N
+	c := new(big.Int).Mod(
+		new(big.Int).Exp(m, pub.N, pub.N),
+		pub.N,
+	)
+	return c.Bytes(), nil
+}
+
+// Decrypt decrypts the passed cipher text. It returns
+// an error if cipher text value is larger than modulus N of Public key.
+func (priv *PrivateKey) Decrypt(cipherText []byte) ([]byte, error) {
+	c := new(big.Int).SetBytes(cipherText)
+	if c.Cmp(priv.N) == 1 { // c < N
+		return nil, ErrLargeCipher
+	}
+
+	// m = c^d mod pq
+	m := new(big.Int).Mod(
+		new(big.Int).Exp(c, priv.D, priv.PQ),
+		priv.PQ,
+	)
+	return m.Bytes(), nil
+}
